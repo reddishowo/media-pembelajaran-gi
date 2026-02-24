@@ -1,29 +1,62 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { UploadCloud, MessageSquare, Star, UserCheck, FileText, ArrowRight, ArrowLeft, Send } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+// Import aksi forum dari actions.ts
+import { sendForumMessage, getForumMessages } from '../actions';
+
+type ForumMessage = {
+  _id: string;
+  groupName: string;
+  userName: string;
+  message: string;
+  createdAt: string;
+};
 
 export default function PresentasiPage() {
   const router = useRouter();
   const [groupName, setGroupName] = useState('');
+  const [userName, setUserName] = useState('');
   
-  // State Simulasi
+  // State Simulasi Upload & Nilai
   const [isUploaded, setIsUploaded] = useState(false);
-  const [comments, setComments] = useState<{name: string, text: string}[]>([
-    { name: 'Guru Biologi', text: 'Analisis kelompok kalian tentang struktur virus sudah sangat detail. Bagaimana dengan cara replikasinya?' }
-  ]);
-  const [newComment, setNewComment] = useState('');
   const [peerScore, setPeerScore] = useState<{ [key: string]: number }>({ kel1: 0, kel2: 0 });
 
+  // State Live Forum
+  const [forumMessages, setForumMessages] = useState<ForumMessage[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  // 1. Ambil Sesi saat komponen dimuat
   useEffect(() => {
-    const data = localStorage.getItem('gi_group_data');
-    if (data) setGroupName(JSON.parse(data).groupName);
+    const data = localStorage.getItem('gi_session');
+    if (data) {
+        const parsed = JSON.parse(data);
+        setGroupName(parsed.groupName);
+        setUserName(parsed.members[0] || 'Anggota');
+    }
   }, []);
 
+  // 2. Polling Live Forum (Update tiap 2 detik)
+  useEffect(() => {
+    const fetchForum = async () => {
+        const msgs = await getForumMessages();
+        setForumMessages(msgs);
+    };
+    
+    fetchForum(); // Panggilan pertama
+    const interval = setInterval(fetchForum, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Auto-scroll ke pesan terbaru
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [forumMessages]);
+
   const handleUpload = () => {
-    // Simulasi loading upload
     const btn = document.getElementById('upload-btn');
     if(btn) btn.innerText = 'Mengunggah...';
     setTimeout(() => {
@@ -32,11 +65,24 @@ export default function PresentasiPage() {
     }, 1500);
   };
 
-  const handlePostComment = (e: React.FormEvent) => {
+  // 3. Kirim Komentar ke DB
+  const handlePostComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if(!newComment.trim()) return;
-    setComments([...comments, { name: groupName, text: newComment }]);
+    if(!newComment.trim() || !groupName) return;
+
+    // Optimistic Update (Muncul di layar langsung)
+    const tempMsg = {
+        _id: Date.now().toString(),
+        groupName,
+        userName,
+        message: newComment,
+        createdAt: new Date().toISOString()
+    };
+    setForumMessages([...forumMessages, tempMsg]);
     setNewComment('');
+
+    // Simpan ke DB
+    await sendForumMessage(groupName, userName, tempMsg.message);
   };
 
   const handleNext = () => {
@@ -110,10 +156,11 @@ export default function PresentasiPage() {
                         <div key={idx} className="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-100">
                             <span className="font-medium text-slate-700 text-sm">{kel}</span>
                             <div className="flex items-center gap-2">
+                                {/* PERBAIKAN WARNA INPUT DISINI */}
                                 <input 
                                     type="number" 
                                     min="1" max="10" 
-                                    className="w-16 p-2 rounded-lg border border-slate-300 text-center focus:ring-2 focus:ring-emerald-400 outline-none"
+                                    className="w-16 p-2 rounded-lg border border-slate-300 text-center text-slate-800 focus:ring-2 focus:ring-emerald-400 outline-none"
                                     placeholder="0"
                                     onChange={(e) => setPeerScore({...peerScore, [`kel${idx}`]: parseInt(e.target.value)})}
                                 />
@@ -125,44 +172,61 @@ export default function PresentasiPage() {
             </section>
         </div>
 
-        {/* KOLOM KANAN: Forum Diskusi & Komentar Guru */}
-        <div className="space-y-8">
-            <section className="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100 h-full flex flex-col">
+        {/* KOLOM KANAN: Forum Diskusi Kelas (LIVE) */}
+        <div className="space-y-8 h-150 flex flex-col">
+            <section className="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100 h-full flex flex-col relative overflow-hidden">
+                
                 <div className="flex items-center gap-2 mb-4 text-emerald-800 border-b border-emerald-50 pb-2">
                     <MessageSquare size={20} />
-                    <h3 className="font-bold text-lg">Forum Tanya Jawab Kelas</h3>
+                    <div>
+                        <h3 className="font-bold text-lg leading-tight">Forum Tanya Jawab Kelas</h3>
+                        <p className="text-[10px] text-emerald-500">Live Global Chat</p>
+                    </div>
                 </div>
 
-                {/* Komentar Guru Special Box */}
-                <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-xl mb-4">
+                {/* Komentar Guru Special Box (Static Placeholder) */}
+                <div className="bg-yellow-50 border border-yellow-100 p-4 rounded-xl mb-4 shrink-0">
                     <div className="flex items-center gap-2 mb-2">
                         <div className="w-6 h-6 bg-yellow-200 rounded-full flex items-center justify-center text-[10px] font-bold text-yellow-800">G</div>
                         <span className="font-bold text-yellow-800 text-xs">Komentar Guru</span>
                     </div>
-                    <p className="text-sm text-slate-700 italic">"Jangan lupa jelaskan kaitan hasil temuan kalian dengan literatur yang ada di modul."</p>
+                    <p className="text-sm text-slate-700 italic">"Perhatikan sesi presentasi teman kalian. Silakan bertanya melalui forum ini!"</p>
                 </div>
 
-                {/* List Komentar */}
-                <div className="flex-1 space-y-4 mb-6 max-h-75 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-emerald-100">
-                    {comments.map((com, idx) => (
-                        <div key={idx} className={`p-3 rounded-xl text-sm ${com.name === groupName ? 'bg-emerald-50 ml-8 border border-emerald-100' : 'bg-slate-50 mr-8 border border-slate-100'}`}>
-                            <div className="font-bold text-xs text-slate-500 mb-1">{com.name}</div>
-                            <div className="text-slate-700">{com.text}</div>
-                        </div>
-                    ))}
+                {/* List Komentar LIVE */}
+                <div className="flex-1 space-y-4 mb-4 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-emerald-100 pb-4">
+                    {forumMessages.length === 0 && (
+                        <p className="text-center text-sm text-slate-400 mt-10">Belum ada diskusi kelas. Jadilah yang pertama bertanya!</p>
+                    )}
+                    {forumMessages.map((com) => {
+                        const isMe = com.groupName === groupName;
+                        return (
+                            <div key={com._id} className={`p-3 rounded-xl text-sm shadow-sm ${isMe ? 'bg-emerald-50 ml-8 border border-emerald-200' : 'bg-slate-50 mr-8 border border-slate-200'}`}>
+                                <div className={`font-bold text-[11px] mb-1 ${isMe ? 'text-emerald-700' : 'text-slate-600'}`}>
+                                    [{com.groupName}] - {com.userName}
+                                </div>
+                                <div className="text-slate-800">{com.message}</div>
+                                <div className="text-[9px] text-slate-400 mt-1 text-right">
+                                    {new Date(com.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                </div>
+                            </div>
+                        );
+                    })}
+                    <div ref={chatEndRef} />
                 </div>
 
                 {/* Input Komentar */}
-                <form onSubmit={handlePostComment} className="mt-auto">
+                <form onSubmit={handlePostComment} className="mt-auto shrink-0 pt-2 border-t border-slate-50">
                     <div className="flex gap-2">
+                        {/* PERBAIKAN WARNA TEKS DISINI */}
                         <input 
                             type="text" 
-                            className="flex-1 bg-slate-100 border-0 rounded-full px-4 py-3 text-sm focus:ring-2 focus:ring-emerald-400 outline-none"
+                            className="flex-1 bg-slate-100 border-0 rounded-full px-4 py-3 text-slate-800 placeholder:text-slate-500 text-sm focus:ring-2 focus:ring-emerald-400 outline-none"
                             placeholder="Tulis pertanyaan atau tanggapan..."
                             value={newComment}
                             onChange={(e) => setNewComment(e.target.value)}
                         />
-                        <button type="submit" className="bg-emerald-500 hover:bg-emerald-600 text-white p-3 rounded-full shadow-md transition transform active:scale-95">
+                        <button type="submit" disabled={!newComment.trim()} className="bg-emerald-500 hover:bg-emerald-600 disabled:bg-slate-300 text-white p-3 rounded-full shadow-md transition transform active:scale-95">
                             <Send size={18} />
                         </button>
                     </div>
