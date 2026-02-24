@@ -1,6 +1,7 @@
 import React from 'react';
 import { BookOpen, HelpCircle, Play, Microscope, FlaskConical, ShieldCheck, Search } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function Dashboard() {
   return (
@@ -10,8 +11,15 @@ export default function Dashboard() {
         <div className="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center gap-3">
             {/* Logo UM Placeholder */}
-            <div className="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white font-bold text-xs shadow-lg transform rotate-3">
-              UM
+            <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg transform rotate-3 bg-white flex items-center justify-center">
+              <Image
+                src="/Lambang-UM.png"
+                alt="Lambang Universitas Negeri Malang"
+                width={40}
+                height={40}
+                className="object-contain"
+                priority
+              />
             </div>
             <div>
               <span className="font-bold text-emerald-900 text-lg block leading-none">
