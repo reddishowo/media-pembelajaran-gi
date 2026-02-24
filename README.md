@@ -152,6 +152,8 @@ Langkah umum:
 
 ## Author
 
+- Farriel Arrianta
+- Nafisa Syafaqoh
+  
 Dikembangkan untuk media pembelajaran Biologi berbasis GI.
 
-Silakan sesuaikan bagian ini dengan nama tim/instansi Anda jika project dipublikasikan.
