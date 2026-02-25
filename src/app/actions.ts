@@ -166,3 +166,21 @@ export async function getForumMessages() {
     return [];
   }
 }
+
+export async function getAllGroupsList() {
+  try {
+    const client = await clientPromise;
+    const db = client.db(DB_NAME);
+    
+    // Ambil semua kelompok, tapi hanya ambil field 'groupName' saja
+    const groups = await db.collection('groups')
+      .find({})
+      .project({ groupName: 1, _id: 0 })
+      .toArray();
+      
+    return groups.map((g: any) => g.groupName);
+  } catch (error) {
+    console.error("[DB ERROR] getAllGroupsList:", error);
+    return [];
+  }
+}
