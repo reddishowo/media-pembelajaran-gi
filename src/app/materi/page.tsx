@@ -1,20 +1,25 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Video, ExternalLink, Image as ImageIcon, ArrowRight, ArrowLeft, ChevronLeft, ChevronRight, ZoomIn } from 'lucide-react';
+import { BookOpen, Video, ExternalLink, Image as ImageIcon, ArrowRight, ArrowLeft, ChevronLeft, ChevronRight, ZoomIn, Copy, CheckCircle2, UserCircle2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function MateriPage() {
   const [activeTab, setActiveTab] = useState('virus');
   const [videoIndex, setVideoIndex] = useState(0); 
 
-  // Otomatis pilih tab sesuai topik & Reset video index saat ganti tab
+  // State untuk Profil User (Diambil dari LocalStorage Sesi)
+  const [sessionInfo, setSessionInfo] = useState({ groupName: '', userName: '', role: '', groupCode: '' });
+  const [copied, setCopied] = useState(false); // Untuk efek animasi copy kode
+
+  // Otomatis pilih tab sesuai topik & Load Profil
   useEffect(() => {
-    const data = localStorage.getItem('gi_group_data');
+    const data = localStorage.getItem('gi_session');
     if(data) {
-        const topic = JSON.parse(data).topic;
-        if(topic && ['virus', 'bakteri', 'jamur'].includes(topic)) {
-            setActiveTab(topic);
+        const parsed = JSON.parse(data);
+        setSessionInfo(parsed);
+        if(parsed.topic && ['virus', 'bakteri', 'jamur'].includes(parsed.topic)) {
+            setActiveTab(parsed.topic);
         }
     }
   }, []);
@@ -24,12 +29,19 @@ export default function MateriPage() {
     setVideoIndex(0);
   }, [activeTab]);
 
+  // Fungsi untuk Copy Kode Kelompok (Bagi Ketua)
+  const handleCopyCode = () => {
+      navigator.clipboard.writeText(sessionInfo.groupCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+  };
+
   const content = {
+    // ... [Isi content Virus, Bakteri, Jamur sama seperti sebelumnya] ...
     virus: {
       title: 'Virus: Organisme Peralihan',
       desc: 'Virus bukan sel hidup, melainkan materi genetik yang terbungkus protein. Mereka membutuhkan inang untuk bereproduksi.',
       youtubeIds: ['8glI_X1XoBE'],
-      // Tambahkan path gambar di sini (pastikan file ada di folder public)
       infographicSrc: '/infografis/virus.png', 
       articles: [
         { title: 'Struktur dan Bentuk Virus (Kompas)', url: 'https://www.kompas.com/skola/read/2020/12/26/164741669/struktur-tubuh-virus' },
@@ -40,7 +52,7 @@ export default function MateriPage() {
       title: 'Bakteri: Prokariota Sejati',
       desc: 'Organisme bersel tunggal tanpa membran inti. Memiliki peran ganda: patogen penyebab penyakit dan dekomposer lingkungan.',
       youtubeIds: ['ZysZy1OfGII', 'qQMwb7VJ-Dc'], 
-      infographicSrc: '/infografis/bakteri.jpg', // Gambar infografis bakteri
+      infographicSrc: '/infografis/bakteri.jpg', 
       articles: [
         { title: 'Peranan Bakteri dalam Kehidupan (Ruangguru)', url: 'https://www.ruangguru.com/blog/biologi-kelas-10-peranan-bakteri-dalam-kehidupan' },
         { title: 'Resistensi Antibiotik (Kemenkes)', url: 'https://yankes.kemkes.go.id/view_artikel/1049/resistensi-antibiotik' },
@@ -50,7 +62,7 @@ export default function MateriPage() {
       title: 'Jamur (Fungi): Dekomposer Alami',
       desc: 'Eukariota yang tidak memiliki klorofil. Hidup sebagai saprofit atau parasit, dan bereproduksi dengan spora.',
       youtubeIds: ['mtx7xk-7KqQ'],
-      infographicSrc: '/infografis/jamur.png', // Gambar infografis jamur
+      infographicSrc: '/infografis/jamur.png', 
       articles: [
         { title: 'Ciri-Ciri Kingdom Fungi (Gramedia)', url: 'https://www.gramedia.com/literasi/kingdom-fungi/' },
         { title: 'Fermentasi Tempe: Peran Rhizopus (BRIN)', url: 'https://lipi.go.id/berita/single/bioteknologi-fermentasi-tempe/1234' },
@@ -63,15 +75,51 @@ export default function MateriPage() {
 
   return (
     <div className="min-h-screen bg-[#f0f9f4] text-slate-800 pb-28 font-sans">
-       <nav className="bg-white px-6 py-4 shadow-sm flex items-center gap-4 sticky top-0 z-10 border-b border-emerald-100">
-        <Link href="/identifikasi" className="p-2 hover:bg-emerald-50 rounded-full text-emerald-600 transition">
-            <ArrowLeft size={20} />
-        </Link>
-        <div>
-            <h1 className="font-bold text-emerald-900 text-lg">Materi Pembelajaran</h1>
-            <p className="text-xs text-slate-500">Langkah 2 dari 3</p>
+       
+       {/* ================= NAVBAR DENGAN PROFIL ================= */}
+       <nav className="bg-white px-4 md:px-8 py-3 shadow-sm flex items-center justify-between sticky top-0 z-10 border-b border-emerald-100">
+        <div className="flex items-center gap-3">
+            <Link href="/" className="p-2 bg-slate-50 hover:bg-emerald-50 rounded-full text-emerald-600 transition">
+                <ArrowLeft size={18} />
+            </Link>
+            <div className="hidden sm:block">
+                <h1 className="font-bold text-emerald-900 text-lg leading-tight">Materi Pembelajaran</h1>
+                <p className="text-[10px] font-medium text-slate-500 uppercase tracking-widest">Langkah 2 dari 3</p>
+            </div>
         </div>
+
+        {/* Profil Card (Pojok Kanan) */}
+        {sessionInfo.userName && (
+            <div className="flex items-center gap-3 bg-emerald-50/50 border border-emerald-100 px-3 py-1.5 rounded-full">
+                {/* Avatar Icon */}
+                <div className="bg-emerald-200 text-emerald-700 p-1.5 rounded-full">
+                    <UserCircle2 size={18} />
+                </div>
+                
+                {/* Info User */}
+                <div className="flex flex-col">
+                    <span className="text-xs font-bold text-emerald-900 leading-none">
+                        {sessionInfo.userName} <span className="text-emerald-500 font-normal">({sessionInfo.groupName})</span>
+                    </span>
+                    
+                    {/* Logika Tampilan Kode Khusus Ketua */}
+                    {sessionInfo.role === 'leader' ? (
+                        <div 
+                            onClick={handleCopyCode}
+                            className="flex items-center gap-1 text-[10px] text-emerald-600 cursor-pointer hover:text-emerald-800 transition mt-0.5 group"
+                            title="Klik untuk menyalin kode!"
+                        >
+                            <span className="font-medium">Kode: <span className="font-mono font-bold tracking-widest">{sessionInfo.groupCode}</span></span>
+                            {copied ? <CheckCircle2 size={12} className="text-green-500"/> : <Copy size={10} className="opacity-50 group-hover:opacity-100"/>}
+                        </div>
+                    ) : (
+                        <span className="text-[10px] text-slate-500 font-medium mt-0.5">Anggota Tim</span>
+                    )}
+                </div>
+            </div>
+        )}
       </nav>
+      {/* ======================================================== */}
 
       <main className="max-w-5xl mx-auto px-6 py-8">
         {/* Tabs */}
@@ -156,7 +204,6 @@ export default function MateriPage() {
                     <span className="text-[10px] bg-emerald-200 text-emerald-800 px-2 py-1 rounded-full font-bold uppercase">Gambar</span>
                 </div>
                 <div className="p-4 bg-slate-50">
-                    {/* Gambar Infografis */}
                     <img 
                         src={activeContent.infographicSrc} 
                         alt={`Infografis ${activeTab}`} 
@@ -175,7 +222,6 @@ export default function MateriPage() {
                 </div>
               </div>
             ) : (
-              // Placeholder jika tidak ada gambar
               <div className="bg-emerald-50 border-2 border-dashed border-emerald-200 rounded-2xl p-8 flex flex-col items-center justify-center text-center">
                 <ImageIcon size={40} className="text-emerald-300 mb-2" />
                 <h3 className="font-bold text-emerald-800">Infografis Struktur {activeTab}</h3>

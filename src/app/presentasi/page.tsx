@@ -42,7 +42,9 @@ export default function PresentasiPage() {
         if (sessionStr) {
             const parsed = JSON.parse(sessionStr);
             setGroupName(parsed.groupName);
-            setUserName(parsed.members[0] || 'Anggota');
+            
+            // PERBAIKAN DI SINI: Gunakan parsed.userName
+            setUserName(parsed.userName || 'Anggota Anonim');
 
             const allGroups = await getAllGroupsList();
             const others = allGroups.filter((g: string) => g !== parsed.groupName);

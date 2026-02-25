@@ -35,11 +35,22 @@ export default function InvestigasiPage() {
     if (sessionStr) {
       const session = JSON.parse(sessionStr);
       setGroupName(session.groupName);
-      setUserName(session.members[0] || 'Anggota');
+      
+      // PERBAIKAN DI SINI: Gunakan session.userName, BUKAN session.members[0]
+      setUserName(session.userName || 'Anggota Anonim'); 
       
       // 2. Ambil LKPD tersimpan dari MONGODB
       getGroupData(session.groupName).then((data: any) => {
-        if (data && data.lkpd) setLkpd(data.lkpd);
+        if (data && data.lkpd) {
+          // PERBAIKAN: Gunakan || '' agar jika undefined di database, tetap terbaca sebagai string kosong
+          setLkpd({
+            variabel: data.lkpd.variabel || '',
+            alatBahan: data.lkpd.alatBahan || '',
+            mekanisme: data.lkpd.mekanisme || '',
+            evaluasi: data.lkpd.evaluasi || '',
+            draft: data.lkpd.draft || ''
+          });
+        }
       });
     }
   }, []);
@@ -125,7 +136,7 @@ export default function InvestigasiPage() {
                     <div className="space-y-6 pl-2 md:pl-12">
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2">1. Variabel apa yang akan kalian amati?</label>
-                            <input type="text" value={lkpd.variabel} onChange={e=>setLkpd({...lkpd, variabel:e.target.value})} className="w-full p-4 bg-slate-50 rounded-xl border border-slate-200 text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-400 outline-none transition" placeholder="Tulis variabel bebas dan terikat..." />
+                            <input type="text" value={lkpd.variabel || ''} onChange={e=>setLkpd({...lkpd, variabel:e.target.value})} className="w-full p-4 bg-slate-50 rounded-xl border border-slate-200 text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-400 outline-none transition" placeholder="Tulis variabel bebas dan terikat..." />
                         </div>
                         <div>
                             <label className="block text-sm font-bold text-slate-700 mb-2">2. Alat & Bahan yang dibutuhkan:</label>
