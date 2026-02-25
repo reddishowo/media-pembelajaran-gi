@@ -184,3 +184,89 @@ export async function getAllGroupsList() {
     return [];
   }
 }
+
+// 1. BUAT KELOMPOK BARU (Oleh Ketua)
+export async function createGroup(groupName: string, leaderName: string, topic: string) {
+  try {
+    const client = await clientPromise;
+    const db = client.db(DB_NAME);
+
+    // Generate Kode Unik 6 Digit (Misal: 7X92A1)
+    const groupCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+    const newGroup = {
+      groupName,
+      groupCode,
+      topic,
+      members: [leaderName], // Ketua otomatis jadi member pertama
+      createdAt: new Date(),
+      lkpd: {} // Placeholder LKPD
+    };
+
+    await db.collection('groups').insertOne(newGroup);
+    
+    return { success: true, groupCode, groupName };
+  } catch (error) {
+    console.error("Error createGroup:", error);
+    return { success: false, error: 'Gagal membuat kelompok' };
+  }
+}
+
+// 2. GABUNG KELOMPOK (Oleh Anggota)
+export async function joinGroup(groupCode: string, memberName: string) {
+  try {
+    const client = await clientPromise;
+    const db = client.db(DB_NAME);
+
+    // Cari kelompok berdasarkan kode
+    const group = await db.collection('groups').findOne({ groupCode });
+
+    if (!group) {
+      return { success: false, error: 'Kode kelompok tidak ditemukan!' };
+    }
+
+    // Cek apakah nama sudah ada (opsional, biar tidak duplikat)
+    if (!group.members.includes(memberName)) {
+      // PERBAIKAN DI SINI: Gunakan 'as any' agar TypeScript tidak error pada $push
+      await db.collection('groups').updateOne(
+        { groupCode },
+        { $push: { members: memberName } as any } 
+      );
+    }
+
+    return { 
+      success: true, 
+      groupName: group.groupName, 
+      topic: group.topic 
+    };
+  } catch (error) {
+    console.error("Error joinGroup:", error);
+    return { success: false, error: 'Gagal bergabung' };
+  }
+}
+
+// 3. SIMPAN EVALUASI INDIVIDU
+// (Update fungsi saveEvaluation yang lama agar lebih spesifik)
+export async function saveIndividualEvaluation(groupName: string, userName: string, data: any) {
+  try {
+    const client = await clientPromise;
+    const db = client.db(DB_NAME);
+
+    // Gunakan updateOne dengan upsert agar jika user submit ulang, datanya tertimpa (bukan duplikat)
+    await db.collection('evaluations').updateOne(
+      { groupName, userName }, // Kunci unik: Nama User di dalam Kelompok tsb
+      { 
+        $set: {
+          ...data,
+          submittedAt: new Date()
+        }
+      },
+      { upsert: true }
+    );
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error saveEvaluation:", error);
+    return { success: false };
+  }
+}
