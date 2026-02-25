@@ -50,7 +50,7 @@ export default function MateriPage() {
       title: 'Jamur (Fungi): Dekomposer Alami',
       desc: 'Eukariota yang tidak memiliki klorofil. Hidup sebagai saprofit atau parasit, dan bereproduksi dengan spora.',
       youtubeIds: ['mtx7xk-7KqQ'],
-      infographicSrc: '/infografis/jamur.jpg', // Gambar infografis jamur
+      infographicSrc: '/infografis/jamur.png', // Gambar infografis jamur
       articles: [
         { title: 'Ciri-Ciri Kingdom Fungi (Gramedia)', url: 'https://www.gramedia.com/literasi/kingdom-fungi/' },
         { title: 'Fermentasi Tempe: Peran Rhizopus (BRIN)', url: 'https://lipi.go.id/berita/single/bioteknologi-fermentasi-tempe/1234' },
