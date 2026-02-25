@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-import { ClipboardList, MessageCircle, Send, Save, PenTool, ArrowLeft, CheckCircle, Loader2 } from 'lucide-react';
+import { ClipboardList, MessageCircle, Send, Save, PenTool, ArrowLeft, CheckCircle, Loader2, X, Minimize2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { saveLKPD, getGroupData, sendChatMessage, getChatMessages } from '../actions';
@@ -14,6 +14,10 @@ export default function InvestigasiPage() {
   const [userName, setUserName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   
+  // State untuk Floating Chat
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [hasNewMessage, setHasNewMessage] = useState(false);
+
   // State LKPD Form
   const [lkpd, setLkpd] = useState({
     variabel: '', alatBahan: '', mekanisme: '', evaluasi: '', draft: ''
@@ -23,6 +27,7 @@ export default function InvestigasiPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const prevMessageCount = useRef(0);
 
   useEffect(() => {
     // 1. Baca Sesi dari Browser
@@ -45,13 +50,27 @@ export default function InvestigasiPage() {
     const fetchChat = async () => {
         const chatData = await getChatMessages(groupName);
         setMessages(chatData);
+
+        // Logic untuk notifikasi merah jika ada pesan baru saat chat tertutup
+        if (chatData.length > prevMessageCount.current) {
+            if (!isChatOpen) {
+                setHasNewMessage(true);
+            }
+            prevMessageCount.current = chatData.length;
+        }
     };
-    fetchChat(); // Ambil pertama kali
+    fetchChat(); 
     const interval = setInterval(fetchChat, 2000); 
     return () => clearInterval(interval);
-  }, [groupName]);
+  }, [groupName, isChatOpen]);
 
-  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+  // Auto scroll saat chat terbuka
+  useEffect(() => { 
+    if(isChatOpen) {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        setHasNewMessage(false); // Hilangkan notifikasi merah
+    }
+  }, [messages, isChatOpen]);
 
   // Handler Simpan LKPD ke DB
   const handleSaveLKPD = async () => {
@@ -66,20 +85,25 @@ export default function InvestigasiPage() {
     e.preventDefault();
     if (!newMessage.trim() || !groupName) return;
     
-    // Optimistic UI update (tampil di layar dulu)
+    // Optimistic UI update
     const tempMsg = { _id: Date.now().toString(), groupName, userName, message: newMessage, createdAt: new Date().toISOString() };
     setMessages([...messages, tempMsg]);
     setNewMessage(''); 
+    prevMessageCount.current += 1; // Update counter lokal agar tidak trigger notifikasi sendiri
 
     // Simpan ke DB
     await sendChatMessage(groupName, userName, tempMsg.message);
   };
 
   return (
-    <div className="min-h-screen bg-[#f7fdf9] font-sans flex flex-col md:flex-row">
-      {/* LEFT SIDE: LKPD */}
-      <div className="w-full md:w-2/3 flex flex-col h-screen">
-         <div className="bg-white border-b border-emerald-100 p-4 flex items-center justify-between shadow-sm z-10">
+    <div className="min-h-screen bg-[#f7fdf9] font-sans pb-20 relative">
+      
+      {/* 
+        MAIN CONTENT: LKPD (Sekarang Full Width & Centered) 
+      */}
+      <div className="w-full max-w-5xl mx-auto px-4 py-6">
+         {/* Header Page */}
+         <div className="bg-white border-b border-emerald-100 p-4 rounded-t-2xl flex items-center justify-between shadow-sm z-10 sticky top-0">
             <div className="flex items-center gap-3">
                 <Link href="/materi" className="p-2 hover:bg-emerald-50 rounded-full text-emerald-600 transition"><ArrowLeft size={20} /></Link>
                 <div><h1 className="font-bold text-emerald-900 text-lg leading-none">LKPD Investigasi</h1><p className="text-xs text-emerald-600">Terhubung ke Database</p></div>
@@ -87,74 +111,130 @@ export default function InvestigasiPage() {
             <button onClick={() => router.push('/presentasi')} className="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold py-2 px-4 rounded-full flex items-center gap-2 transition"><CheckCircle size={16} /> Selesai</button>
          </div>
 
-         <div className="flex-1 overflow-y-auto p-6 md:p-10 pb-32">
-            <header className="mb-8"><h1 className="text-2xl font-bold text-emerald-900 mb-2">Lembar Kerja Investigasi</h1><div className="inline-block bg-emerald-100 text-emerald-800 px-3 py-1 rounded-lg text-sm font-medium">Kelompok: {groupName}</div></header>
+         {/* Form Area */}
+         <div className="bg-white p-8 rounded-b-2xl shadow-sm border border-emerald-100 min-h-[80vh]">
+            <header className="mb-8 border-b border-slate-100 pb-6">
+                <h1 className="text-3xl font-bold text-emerald-900 mb-2">Lembar Kerja Investigasi</h1>
+                <div className="inline-block bg-emerald-100 text-emerald-800 px-4 py-1.5 rounded-full text-sm font-medium">Kelompok: {groupName}</div>
+            </header>
 
-            <form className="space-y-8" onSubmit={(e) => e.preventDefault()}>
-            <section className="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100">
-                <div className="flex items-center gap-2 mb-4 text-emerald-800"><div className="bg-emerald-100 p-2 rounded-lg"><ClipboardList size={20}/></div><h3 className="font-bold">A. Perencanaan Investigasi</h3></div>
-                <div className="space-y-4">
-                <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">1. Variabel apa yang akan kalian amati?</label>
-                    <input type="text" value={lkpd.variabel} onChange={e=>setLkpd({...lkpd, variabel:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-400 outline-none" />
-                </div>
-                <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">2. Alat & Bahan yang dibutuhkan:</label>
-                    <textarea rows={2} value={lkpd.alatBahan} onChange={e=>setLkpd({...lkpd, alatBahan:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-400 outline-none"></textarea>
-                </div>
-                </div>
-            </section>
+            <form className="space-y-10" onSubmit={(e) => e.preventDefault()}>
+                {/* Bagian A */}
+                <section>
+                    <div className="flex items-center gap-2 mb-4 text-emerald-800"><div className="bg-emerald-100 p-2 rounded-lg"><ClipboardList size={24}/></div><h3 className="font-bold text-xl">A. Perencanaan Investigasi</h3></div>
+                    <div className="space-y-6 pl-2 md:pl-12">
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">1. Variabel apa yang akan kalian amati?</label>
+                            <input type="text" value={lkpd.variabel} onChange={e=>setLkpd({...lkpd, variabel:e.target.value})} className="w-full p-4 bg-slate-50 rounded-xl border border-slate-200 text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-400 outline-none transition" placeholder="Tulis variabel bebas dan terikat..." />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">2. Alat & Bahan yang dibutuhkan:</label>
+                            <textarea rows={3} value={lkpd.alatBahan} onChange={e=>setLkpd({...lkpd, alatBahan:e.target.value})} className="w-full p-4 bg-slate-50 rounded-xl border border-slate-200 text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-400 outline-none transition" placeholder="Sebutkan alat dan bahan secara rinci..."></textarea>
+                        </div>
+                    </div>
+                </section>
 
-            <section className="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100">
-                <div className="flex items-center gap-2 mb-4 text-emerald-800"><div className="bg-emerald-100 p-2 rounded-lg"><PenTool size={20}/></div><h3 className="font-bold">B. Analisis (HOTS)</h3></div>
-                <div className="space-y-6">
-                <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">1. Jelaskan mekanisme biologisnya!</label>
-                    <textarea rows={4} value={lkpd.mekanisme} onChange={e=>setLkpd({...lkpd, mekanisme:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 text-slate-800 focus:ring-2 focus:ring-emerald-400 outline-none"></textarea>
-                </div>
-                <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1">2. Evaluasi informasi:</label>
-                    <textarea rows={3} value={lkpd.evaluasi} onChange={e=>setLkpd({...lkpd, evaluasi:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 text-slate-800 focus:ring-2 focus:ring-emerald-400 outline-none"></textarea>
-                </div>
-                </div>
-            </section>
+                {/* Bagian B */}
+                <section>
+                    <div className="flex items-center gap-2 mb-4 text-emerald-800"><div className="bg-emerald-100 p-2 rounded-lg"><PenTool size={24}/></div><h3 className="font-bold text-xl">B. Analisis (HOTS)</h3></div>
+                    <div className="space-y-6 pl-2 md:pl-12">
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">1. Jelaskan mekanisme biologisnya!</label>
+                            <textarea rows={5} value={lkpd.mekanisme} onChange={e=>setLkpd({...lkpd, mekanisme:e.target.value})} className="w-full p-4 bg-slate-50 rounded-xl border border-slate-200 text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-400 outline-none transition" placeholder="Jelaskan prosesnya secara ilmiah..."></textarea>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">2. Evaluasi informasi:</label>
+                            <textarea rows={3} value={lkpd.evaluasi} onChange={e=>setLkpd({...lkpd, evaluasi:e.target.value})} className="w-full p-4 bg-slate-50 rounded-xl border border-slate-200 text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-400 outline-none transition" placeholder="Apakah data yang didapat valid?"></textarea>
+                        </div>
+                    </div>
+                </section>
 
-            <section className="bg-white p-6 rounded-2xl shadow-sm border border-emerald-100">
-                <div className="flex items-center gap-2 mb-4 text-emerald-800"><div className="bg-emerald-100 p-2 rounded-lg"><Save size={20}/></div><h3 className="font-bold">C. Draft Laporan</h3></div>
-                <textarea rows={5} value={lkpd.draft} onChange={e=>setLkpd({...lkpd, draft:e.target.value})} className="w-full p-3 bg-slate-50 rounded-xl border border-slate-200 text-slate-800 focus:ring-2 focus:ring-emerald-400 outline-none"></textarea>
-            </section>
+                {/* Bagian C */}
+                <section>
+                    <div className="flex items-center gap-2 mb-4 text-emerald-800"><div className="bg-emerald-100 p-2 rounded-lg"><Save size={24}/></div><h3 className="font-bold text-xl">C. Draft Laporan</h3></div>
+                    <div className="pl-2 md:pl-12">
+                         <textarea rows={6} value={lkpd.draft} onChange={e=>setLkpd({...lkpd, draft:e.target.value})} className="w-full p-4 bg-slate-50 rounded-xl border border-slate-200 text-slate-800 placeholder:text-slate-400 focus:ring-2 focus:ring-emerald-400 outline-none transition" placeholder="Tuliskan kerangka laporan akhir di sini..."></textarea>
+                    </div>
+                </section>
 
-            <button type="button" onClick={handleSaveLKPD} disabled={isSaving} className="bg-emerald-100 text-emerald-700 border border-emerald-200 px-6 py-3 rounded-xl font-bold hover:bg-emerald-200 w-full md:w-auto flex items-center justify-center gap-2">
-                {isSaving ? <Loader2 className="animate-spin" size={20}/> : <Save size={20} />} Simpan LKPD ke Database
-            </button>
+                <div className="flex justify-end pt-6 border-t border-slate-100">
+                    <button type="button" onClick={handleSaveLKPD} disabled={isSaving} className="bg-emerald-600 text-white px-8 py-4 rounded-xl font-bold hover:bg-emerald-700 shadow-lg shadow-emerald-200 transform active:scale-95 transition flex items-center gap-2">
+                        {isSaving ? <Loader2 className="animate-spin" size={20}/> : <Save size={20} />} Simpan LKPD ke Database
+                    </button>
+                </div>
             </form>
          </div>
       </div>
 
-      {/* RIGHT SIDE: Diskusi (MONGODB) */}
-      <div className="w-full md:w-1/3 bg-white border-l border-emerald-100 flex flex-col h-[50vh] md:h-screen fixed bottom-0 md:relative z-20">
-        <div className="p-4 bg-emerald-800 text-white flex justify-between items-center shadow-md">
-          <div className="flex items-center gap-2"><MessageCircle size={20} /><div><span className="font-bold block text-sm">Diskusi Live</span><span className="text-[10px] text-emerald-200">MongoDB Server</span></div></div>
-        </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50">
-          {messages.map((msg) => (
-              <div key={msg._id} className={`flex flex-col ${msg.userName === userName ? 'items-end' : 'items-start'}`}>
-                <div className={`max-w-[85%] p-3 rounded-xl text-sm shadow-sm ${msg.userName === userName ? 'bg-emerald-500 text-white rounded-tr-none' : 'bg-white border border-slate-200 text-slate-700 rounded-tl-none'}`}>
-                  <div className={`font-bold text-[10px] mb-1 ${msg.userName === userName ? 'text-emerald-100' : 'text-emerald-600'}`}>{msg.userName}</div>
-                  {msg.message}
+      {/* 
+        FLOATING CHAT WIDGET (Pojok Kanan Bawah)
+      */}
+      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-4">
+        
+        {/* Chat Window (Muncul saat isChatOpen = true) */}
+        {isChatOpen && (
+            <div className="w-87.5 md:w-100 h-125 bg-white rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 fade-in duration-300 origin-bottom-right">
+                {/* Header */}
+                <div className="bg-emerald-600 p-4 text-white flex justify-between items-center shrink-0">
+                    <div className="flex items-center gap-2">
+                        <MessageCircle size={20} />
+                        <div>
+                            <h3 className="font-bold text-sm">Diskusi Kelompok</h3>
+                            <div className="flex items-center gap-1.5">
+                                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                                <span className="text-[10px] opacity-90">Online • {groupName}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <button onClick={() => setIsChatOpen(false)} className="hover:bg-emerald-700 p-1 rounded transition"><Minimize2 size={18}/></button>
                 </div>
-              </div>
-            ))}
-          <div ref={chatEndRef} />
-        </div>
 
-        <form onSubmit={handleSendMessage} className="p-3 bg-white border-t border-slate-100">
-          <div className="flex gap-2">
-            <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Ketik pesan..." className="flex-1 bg-slate-100 border-0 rounded-full px-4 text-slate-800 text-sm focus:ring-2 focus:ring-emerald-400 outline-none" />
-            <button type="submit" disabled={!newMessage.trim()} className="p-3 bg-emerald-500 text-white rounded-full"><Send size={18} /></button>
-          </div>
-        </form>
+                {/* Messages List */}
+                <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50 scrollbar-thin scrollbar-thumb-slate-200">
+                    {messages.length === 0 && (
+                        <div className="text-center text-slate-400 text-xs mt-10">
+                            Belum ada pesan. Mulai diskusi sekarang!
+                        </div>
+                    )}
+                    {messages.map((msg) => (
+                        <div key={msg._id} className={`flex flex-col ${msg.userName === userName ? 'items-end' : 'items-start'}`}>
+                            <div className={`max-w-[85%] p-3 rounded-xl text-sm shadow-sm ${msg.userName === userName ? 'bg-emerald-500 text-white rounded-tr-none' : 'bg-white border border-slate-200 text-slate-700 rounded-tl-none'}`}>
+                            <div className={`font-bold text-[10px] mb-1 ${msg.userName === userName ? 'text-emerald-100' : 'text-emerald-600'}`}>{msg.userName}</div>
+                            {msg.message}
+                            </div>
+                            <span className="text-[9px] text-slate-400 mt-1 px-1">{new Date(msg.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                        </div>
+                    ))}
+                    <div ref={chatEndRef} />
+                </div>
+
+                {/* Input Area */}
+                <form onSubmit={handleSendMessage} className="p-3 bg-white border-t border-slate-100 shrink-0">
+                    <div className="flex gap-2">
+                        <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Ketik pesan..." className="flex-1 bg-slate-100 border-0 rounded-full px-4 text-slate-800 text-sm focus:ring-2 focus:ring-emerald-400 outline-none" />
+                        <button type="submit" disabled={!newMessage.trim()} className="p-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full transition shadow-md transform active:scale-95"><Send size={18} /></button>
+                    </div>
+                </form>
+            </div>
+        )}
+
+        {/* Floating Button (Toggle) */}
+        <button 
+            onClick={() => setIsChatOpen(!isChatOpen)}
+            className={`
+                relative w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all duration-300 transform hover:scale-110 active:scale-95
+                ${isChatOpen ? 'bg-slate-700 text-white rotate-90' : 'bg-emerald-500 text-white hover:bg-emerald-600'}
+            `}
+        >
+            {isChatOpen ? <X size={24} /> : <MessageCircle size={28} />}
+            
+            {/* Red Dot Notification */}
+            {!isChatOpen && hasNewMessage && (
+                <span className="absolute top-0 right-0 w-4 h-4 bg-red-500 border-2 border-white rounded-full animate-bounce"></span>
+            )}
+        </button>
+
       </div>
     </div>
   );

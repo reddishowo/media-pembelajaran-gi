@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Video, ExternalLink, Image as ImageIcon, ArrowRight, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
+import { BookOpen, Video, ExternalLink, Image as ImageIcon, ArrowRight, ArrowLeft, ChevronLeft, ChevronRight, ZoomIn } from 'lucide-react';
 import Link from 'next/link';
 
 export default function MateriPage() {
   const [activeTab, setActiveTab] = useState('virus');
-  const [videoIndex, setVideoIndex] = useState(0); // State untuk melacak urutan video
+  const [videoIndex, setVideoIndex] = useState(0); 
 
   // Otomatis pilih tab sesuai topik & Reset video index saat ganti tab
   useEffect(() => {
@@ -28,7 +28,9 @@ export default function MateriPage() {
     virus: {
       title: 'Virus: Organisme Peralihan',
       desc: 'Virus bukan sel hidup, melainkan materi genetik yang terbungkus protein. Mereka membutuhkan inang untuk bereproduksi.',
-      youtubeIds: ['8glI_X1XoBE'], // Hanya 1 Video
+      youtubeIds: ['8glI_X1XoBE'],
+      // Tambahkan path gambar di sini (pastikan file ada di folder public)
+      infographicSrc: '/infografis/virus.jpg', 
       articles: [
         { title: 'Struktur dan Bentuk Virus (Kompas)', url: 'https://www.kompas.com/skola/read/2020/12/26/164741669/struktur-tubuh-virus' },
         { title: 'Bagaimana Vaksin Bekerja? (WHO)', url: 'https://www.who.int/news-room/feature-stories/detail/how-do-vaccines-work' },
@@ -37,9 +39,8 @@ export default function MateriPage() {
     bakteri: {
       title: 'Bakteri: Prokariota Sejati',
       desc: 'Organisme bersel tunggal tanpa membran inti. Memiliki peran ganda: patogen penyebab penyakit dan dekomposer lingkungan.',
-      // Ada 2 Video (Part 1 & Part 2)
-      // Note: Video kedua saya pakai video relevan lain sebagai contoh (Ruangguru Klasifikasi Bakteri)
       youtubeIds: ['ZysZy1OfGII', 'qQMwb7VJ-Dc'], 
+      infographicSrc: '/infografis/bakteri.jpg', // Gambar infografis bakteri
       articles: [
         { title: 'Peranan Bakteri dalam Kehidupan (Ruangguru)', url: 'https://www.ruangguru.com/blog/biologi-kelas-10-peranan-bakteri-dalam-kehidupan' },
         { title: 'Resistensi Antibiotik (Kemenkes)', url: 'https://yankes.kemkes.go.id/view_artikel/1049/resistensi-antibiotik' },
@@ -48,7 +49,8 @@ export default function MateriPage() {
     jamur: {
       title: 'Jamur (Fungi): Dekomposer Alami',
       desc: 'Eukariota yang tidak memiliki klorofil. Hidup sebagai saprofit atau parasit, dan bereproduksi dengan spora.',
-      youtubeIds: ['mtx7xk-7KqQ'], // Belum ada video
+      youtubeIds: ['mtx7xk-7KqQ'],
+      infographicSrc: '/infografis/jamur.jpg', // Gambar infografis jamur
       articles: [
         { title: 'Ciri-Ciri Kingdom Fungi (Gramedia)', url: 'https://www.gramedia.com/literasi/kingdom-fungi/' },
         { title: 'Fermentasi Tempe: Peran Rhizopus (BRIN)', url: 'https://lipi.go.id/berita/single/bioteknologi-fermentasi-tempe/1234' },
@@ -117,7 +119,7 @@ export default function MateriPage() {
                 )}
                 </div>
 
-                {/* Video Navigation Controls (Muncul jika video > 1) */}
+                {/* Video Navigation Controls */}
                 {hasMultipleVideos && (
                     <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-emerald-100 shadow-sm">
                         <button 
@@ -143,10 +145,44 @@ export default function MateriPage() {
                 )}
             </div>
 
-            <div className="bg-emerald-50 border-2 border-dashed border-emerald-200 rounded-2xl p-8 flex flex-col items-center justify-center text-center">
-              <ImageIcon size={40} className="text-emerald-300 mb-2" />
-              <h3 className="font-bold text-emerald-800">Infografis Struktur {activeTab}</h3>
-            </div>
+            {/* Infografis Section */}
+            {activeContent.infographicSrc ? (
+              <div className="bg-white border border-emerald-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition">
+                <div className="p-4 bg-emerald-50/50 border-b border-emerald-50 flex items-center justify-between">
+                    <h3 className="font-bold text-emerald-800 flex items-center gap-2">
+                        <ImageIcon size={20} className="text-emerald-600"/>
+                        Infografis Struktur
+                    </h3>
+                    <span className="text-[10px] bg-emerald-200 text-emerald-800 px-2 py-1 rounded-full font-bold uppercase">Gambar</span>
+                </div>
+                <div className="p-4 bg-slate-50">
+                    {/* Gambar Infografis */}
+                    <img 
+                        src={activeContent.infographicSrc} 
+                        alt={`Infografis ${activeTab}`} 
+                        className="w-full h-auto rounded-lg shadow-sm border border-slate-200"
+                    />
+                    <div className="mt-2 text-center">
+                        <a 
+                            href={activeContent.infographicSrc} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs text-emerald-600 hover:underline font-medium"
+                        >
+                            <ZoomIn size={14} /> Lihat Ukuran Penuh
+                        </a>
+                    </div>
+                </div>
+              </div>
+            ) : (
+              // Placeholder jika tidak ada gambar
+              <div className="bg-emerald-50 border-2 border-dashed border-emerald-200 rounded-2xl p-8 flex flex-col items-center justify-center text-center">
+                <ImageIcon size={40} className="text-emerald-300 mb-2" />
+                <h3 className="font-bold text-emerald-800">Infografis Struktur {activeTab}</h3>
+                <p className="text-xs text-emerald-600 mt-1">Gambar belum tersedia untuk topik ini</p>
+              </div>
+            )}
+
           </div>
 
           <div className="space-y-6">
