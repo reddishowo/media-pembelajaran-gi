@@ -30,7 +30,7 @@ export default function MateriPage() {
       desc: 'Virus bukan sel hidup, melainkan materi genetik yang terbungkus protein. Mereka membutuhkan inang untuk bereproduksi.',
       youtubeIds: ['8glI_X1XoBE'],
       // Tambahkan path gambar di sini (pastikan file ada di folder public)
-      infographicSrc: '/infografis/virus.jpg', 
+      infographicSrc: '/infografis/virus.png', 
       articles: [
         { title: 'Struktur dan Bentuk Virus (Kompas)', url: 'https://www.kompas.com/skola/read/2020/12/26/164741669/struktur-tubuh-virus' },
         { title: 'Bagaimana Vaksin Bekerja? (WHO)', url: 'https://www.who.int/news-room/feature-stories/detail/how-do-vaccines-work' },
